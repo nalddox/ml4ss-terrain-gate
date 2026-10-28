@@ -1,0 +1,34 @@
+# Data: raw GND bags, SANPO, and caches are far too large to commit
+data/
+*.bag
+*.db3
+*.mcap
+
+# Course-provided materials (not ours to redistribute)
+proposal/final_project_rfp.pdf
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Zone.Identifier
+*:Zone.Identifier
