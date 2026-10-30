@@ -34,7 +34,7 @@
 
 \begin{center}
 {\large\bfseries Evidence-Gated Terrain Admission for a Wheeled Delivery Robot}\\[2pt]
-{\small ECE 532 Final Project Proposal (graduate track, solo) \quad Jeff Barner \quad October 30, 2026}\\
+{\small ECE 532 Final Project Proposal (graduate track, solo) \quad Jeff Barner \quad November 6, 2026}\\
 {\small Repository: \repourl}
 \end{center}
 
@@ -42,8 +42,8 @@
 
 A wheeled delivery robot plans over a campus sidewalk graph whose edge labels come from a
 map prior (OpenStreetMap). Map labels can be stale or wrong; a shortest-path planner that trusts
-an edge mislabeled \cl{footway} when it is actually stairs commits the robot to an untraversable,
-potentially damaging segment. \textbf{Decision:} for each edge $e$ the planner proposes, may the
+an edge mislabeled \cl{footway} when it actually contains stairs or a curb commits the robot to an
+untraversable, potentially damaging segment. \textbf{Decision:} for each edge $e$ the planner proposes, may the
 robot commit to traversing $e$? The policy emits one of four outcomes:
 \textbf{Act} (admit and traverse); \textbf{Defer} (unresolved obligation and closer observations
 remain: continue approach and re-observe); \textbf{Repair} (an obligation fails, or remains
@@ -57,16 +57,24 @@ unnecessary rejection and deferral, including under injected sensor and map faul
 
 \section{Modalities, Data, Typed Claims, Risks, and Obligations}
 
-\textbf{Data.} \emph{GND}~\cite{gnd} (CC0): wheeled-robot campus traversals with 3D LiDAR, RGB,
-GPS, IMU, and a human-labeled multi-category traversability map (including stairs) used as edge
-ground truth. The baseline uses \emph{one} GND campus, subsampled to 2\,Hz.
-\emph{SANPO}~\cite{sanpo} (CC BY 4.0): pixel-level stairs/curb segmentation, used only to train
-the terrain head, so SANPO$\to$GND is a genuine viewpoint shift (eye height $\to$ robot height).
-\emph{OSM}~\cite{osm} (ODbL): footway graph for the GND campus, cached once as GeoJSON.
+\textbf{Data.} \emph{GND}~\cite{gnd} (CC0). \textbf{Primary:} UMD map~3 (McKeldin Mall), north
+session: a 24\,min, 1.9\,km Clearpath Jackal drive (bag chunks 04--14, $\sim$69\,GB) with a 32-beam
+Ouster LiDAR (10\,Hz), wide-angle RGB (640$\times$480, 15\,Hz), GPS (5\,Hz; reported $\sigma$ median
+9.6\,m), wheel/IMU odometry, 1,792 LiDAR-SLAM keyframe poses, and a human-labeled five-class
+traversability map in which yellow marks \emph{stairs or curbs}~\cite{gnd} ($\sim$95 candidate stair
+regions). \textbf{Held-out:} Georgetown (GTown; different campus and
+sensors) as a shift condition.
+\emph{OSM}~\cite{osm} (ODbL): footway graph and \cl{highway=steps} tags, cached once as GeoJSON.
+\textbf{Head labels:} weak positives where an OSM stair lies 3--25\,m ahead, split by location with buffers;
+the GND map stays out of training. GPS estimate, ignoring occlusion: $\sim$20 route sites, $\sim$840 positive frames.
 Bags are converted once with the pure-Python \cl{rosbags} library~\cite{rosbags}; no ROS or network
-is needed afterward. Each observation is associated with an edge by projecting the edge polyline
-into the camera/LiDAR frame from the logged pose; ground-truth edge labels come from the GND
-traversability map at the edge's footprint.
+is needed afterward. \textbf{Alignment and ground truth:} the traversability map was annotated on a
+top-down projection of the LiDAR global map~\cite{gnd}, so map pixels are tied to the SLAM frame by a
+2D similarity transform fitted once (ground-removed top view $\leftrightarrow$ obstacle layer); GPS is
+kept out of the ground-truth path and serves only as independent evidence for C2. Observations are
+associated with edges in this world frame (camera and LiDAR via GND's published extrinsics). An edge is a ground-truth hazard if its footprint intersects yellow:
+thin yellow lines are labeled curb/step (T1) and yellow regions $\ge A_{\min}$ are labeled stairs (T2).
+This curb/stairs split is my own definition, not GND's.
 
 \textbf{Typed claims.} Every claim is a typed record with fields \cl{edge}, \cl{predicate},
 \cl{value}, \cl{uncertainty}, \cl{source}, \cl{tier}, and \cl{provenance} (sensor, timestamp, frame
@@ -79,50 +87,50 @@ Source & Example claim & Role \\
 RGB + frozen embedding & \cl{terrain(e)=stairs, p=0.91} & Calibrated semantic hazard evidence (A1/A2) \\
 LiDAR geometry & \cl{max\_step(e)=0.14\,m, n\_pts=812} & Independent physical evidence (checker C1) \\
 Map prior (OSM) & \cl{tag(e)=footway} & Planning prior; assumed possibly stale \\
-GPS + IMU & \cl{on\_edge(e), sigma=2.1\,m, d\_sep=3.4\,m} & Attribution of evidence to one edge (checker C2) \\
+GPS + odometry & \cl{on\_edge(e), sigma=2.4\,m, d\_sep=3.4\,m} & Attribution of evidence to one edge (checker C2) \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 \textbf{Risk tiers.} An edge's tier is the \emph{maximum} hazard asserted by any source (escalation
-only; no source can lower a tier): \textbf{T0} flat path; \textbf{T1} curb, curb cut, or slope;
-\textbf{T2} stairs or step exceeding the platform limit $h_{\text{lim}}$ (0.10\,m, configurable).
+only; no source can lower a tier): \textbf{T0} flat path; \textbf{T1} curb, single step, or curb cut;
+\textbf{T2} stairs. GND notes that wheeled robots cannot traverse stairs or curbs~\cite{gnd}, so the
+platform step limit $h_{\text{lim}}$ is set conservatively below curb height (0.05\,m, configurable).
 
 \textbf{Verification obligations} (all must be \textsc{pass}; any \textsc{fail} $\Rightarrow$
 Repair; any \textsc{unresolved} $\Rightarrow$ Defer, or Repair if no closer evidence remains):
-\textbf{O1} (all tiers) attribution: C2 confirms the GPS uncertainty ellipse ($2\sigma$) intersects only
+\textbf{O1} (all tiers) attribution: C2 confirms the fused GPS+odometry $2\sigma$ ellipse intersects only
 $e$, which matters because ramps often run parallel to stairs. \textbf{O2} (T1+) geometry: C1 reports
 $h_{\max} < h_{\text{lim}}$ with point coverage $\ge n_{\min}$. \textbf{O3} (T2) corroboration: the
 calibrated $p(\text{stairs}) < \tau_2$ \emph{and} O2 holds on $\ge 2$ frames at distinct ranges.
 \textbf{O4} (all tiers) provenance: every claim used resolves to a hashed cached artifact.
-\textbf{Risks:} few real stair edges per campus (mitigated by Wilson CIs, per-observation analysis,
-and a second campus if needed); poor GPS near buildings (caught by O1); SANPO$\to$GND shift
-degrading the camera (caught by O2/O3, and measured).
+\textbf{Risks:} noisy UMD GPS ($\sigma\approx$10\,m; C2 fuses odometry; residual deferral measured); few independent stair sites (counted from SLAM poses; Wilson CIs on T2; achieved calibration bound reported); map-to-SLAM alignment error (residual reported, boundary edges flagged);
+no camera--LiDAR transforms in the bags (claims fused per edge in the world frame, never per pixel);
+OSM label errors shared with the map prior (disjoint locations; OSM--GND agreement reported);
+UMD$\to$GTown shift degrading the camera (caught by O2/O3, and measured).
 
 \section{CPU Baseline: Estimated Runtime and Memory}
 
-Planning estimates on 4 cores / 16\,GB, assuming $\le$1\,h of driving ($\le$7.2k frames at 2\,Hz);
-all values will be measured and logged to \cl{compute.json} at the progress gate. The backbone is a
-frozen DINOv2 ViT-S/14~\cite{dinov2} (fallback: MobileNetV3-Small) with a linear head.
+Estimates (4 cores, 16\,GB) for $\sim$3.7k 2\,Hz frames ($\sim$2.9k UMD, $\sim$0.8k GTown); measured values go to \cl{compute.json} at the progress gate. Backbone:
+frozen DINOv2 ViT-S/14~\cite{dinov2} (fallback: MobileNetV3-Small), linear head.
 \begin{center}\small
 \begin{tabular}{@{}lrr@{}}
 \toprule
 Stage & Est.\ time & Peak RAM \\
 \midrule
-One-time bag extraction and 2\,Hz subsampling (streaming) & $\sim$45\,min & $<$2\,GB \\
-OSM graph, edge association, ground-truth edge labels & $<$5\,min & $<$1\,GB \\
-Embed $\sim$6k SANPO + $\sim$7.2k GND frames ($\sim$60\,ms/frame) & $\sim$15\,min & $\sim$3\,GB \\
+One-time extraction of $\sim$72\,GB of bags (raw images) to a 2\,Hz cache & $\sim$65\,min & $<$2\,GB \\
+Map alignment, OSM graph, edge association, ground-truth labels & $<$5\,min & $<$2\,GB \\
+Embed $\sim$3.7k GND frames ($\sim$60\,ms/frame) & $<$5\,min & $\sim$3\,GB \\
 Head training and temperature calibration~\cite{guo2017} & $<$3\,min & $<$2\,GB \\
 C1 ground fit (RANSAC~\cite{ransac}) and step height ($\sim$30\,ms/frame) & $\sim$5\,min & $<$2\,GB \\
-Gate, planner, receipts: 4 policies $\times$ 9 conditions $\times$ 5 seeds & $\sim$20\,min & $<$3\,GB \\
+Gate, planner, receipts: 4 policies $\times$ 10 conditions $\times$ 5 seeds & $\sim$20\,min & $<$3\,GB \\
 \midrule
-Full baseline / evaluator path from cache & $\sim$1.5\,h / $\sim$25\,min & $<$6\,GB \\
+Full baseline / evaluator path from cache & $\sim$1.7\,h / $\sim$25\,min & $<$6\,GB \\
 \bottomrule
 \end{tabular}
 \end{center}
-Both are well inside the 4\,h baseline and 2\,h evaluator budgets. Cached artifacts for
-evaluation (JPEG frames, downsampled LiDAR, embeddings, C1 outputs) are estimated at $<$8\,GB.
-\textbf{Minimum fallback:} C1 + C2 + map prior with no learned model, which still exercises claims,
+Both fit the 4\,h / 2\,h budgets; cached evaluation artifacts are estimated at $<$8\,GB.
+\textbf{Minimum fallback:} C1 + C2 + map prior, no learned model; still exercises claims,
 tiers, gate, receipt, invariant, and failure injection end to end.
 
 \section{Checkers, Action Gate, Invariant, and Failure Injection}
@@ -130,8 +138,8 @@ tiers, gate, receipt, invariant, and failure injection end to end.
 \textbf{Two independent checkers} use disjoint evidence and code paths.
 \textbf{C1, geometric step-height:} fits a local ground plane to LiDAR points on the edge footprint and
 reports the maximum surface discontinuity; it involves no learning and ignores semantic labels.
-\textbf{C2, localization attribution:} uses GPS/IMU covariance and graph geometry to decide whether an
-observation can be attributed to a single edge. \textbf{Gate:} a pure, deterministic function
+\textbf{C2, localization attribution:} fuses GPS with wheel/IMU odometry in a Kalman filter and uses
+the fused covariance and graph geometry to decide whether an observation belongs to a single edge. \textbf{Gate:} a pure, deterministic function
 $(\text{claims}, \text{tier}) \mapsto$ \{Act, Defer, Repair, Handoff\}. Missing evidence yields
 \textsc{unresolved}, never \textsc{pass}. Deferral is real in replay: it consumes the next cached
 observation of $e$ at closer range. \textbf{Invariant I1:} \emph{no edge is admitted unless every
@@ -139,25 +147,25 @@ obligation for its final tier is \textup{\textsc{pass}}, the tier is at least th
 claim, and every supporting claim's hash resolves.} I1 is checked on every receipt by
 \cl{validate --strict} and by property-based tests over randomized claim sets.
 \textbf{Repair:} the planner removes the rejected edge and replans; the receipt records a proposed map
-patch (\cl{tag(e): footway$\to$steps}) together with the evidence that justified it.
+patch (\cl{tag(e): footway$\to$steps}) with its supporting evidence.
 \textbf{Receipt:} \cl{receipt.json} records config and data-manifest hashes, seed, injected faults,
-and per-edge claims, obligation states, decision, and A3 attribution, plus the I1 result.
+and per-edge claims, obligation states, decision, A3 attribution, and I1 result.
 
 \textbf{Failure injection} (each paired with its expected detection and declared in the receipt):
 \emph{missing}: camera or LiDAR dropout ($\Rightarrow$ \textsc{unresolved}, never admit);
 \emph{corrupted}: blur, low light, glare~\cite{imagenetc}; LiDAR thinning; GPS bias of 3--10\,m and
-random-walk drift ($\Rightarrow$ O1 fails); \emph{stale map}: flip $k\%$ of stair edges to
-\cl{footway}; \emph{shifted}: SANPO$\to$GND viewpoint; \emph{adversarial evidence substitution}:
+random-walk drift ($\Rightarrow$ O1 fails); \emph{stale map}: flip $k\%$ of curb and stair edges to
+\cl{footway}; \emph{shifted}: unseen UMD locations, UMD$\to$GTown campus; \emph{adversarial evidence substitution}:
 flip the map \emph{and} replace stair image crops with flat-sidewalk crops, so that two of three sources
 agree on ``flat'' and only C1 stands between the robot and the stairs.
 \textbf{Explicit unwarranted claims:} no claim of real-world deployment safety; of generalization
-beyond the evaluated campus; of detecting hazards other than steps, stairs, and curbs (ice, potholes,
+beyond the two evaluated campuses; of GTown stair rates ($\sim$2 regions); of detecting hazards other than steps, stairs, and curbs (ice, potholes,
 pedestrians); of step heights below LiDAR resolution; or of physical causation. A3 attributions
 describe the decision procedure, not the world.
 
 \section{Metrics, Baselines, Ownership, Timeline, and Fallback}
 
-\textbf{Task performance} (reported separately): stairs AUROC/F1 and ECE on GND, and C1 agreement with
+\textbf{Task performance} (reported separately): stairs AUROC/F1 and ECE on held-out GND locations, and C1 agreement with
 ground-truth step edges. \textbf{Policy behavior:} false admission rate (primary; Wilson 95\% CI),
 unnecessary rejection, unnecessary deferral, handoff rate, checker coverage (fraction of admitted
 edges whose obligations were all discharged by an executable checker), failure detection (fraction of
@@ -166,35 +174,34 @@ ground-truth-traversable edges only; overhead relative to an oracle-map route), 
 \textbf{Baselines:} B0 map-only shortest path; B1 camera-only threshold; B2 conservative veto (reject
 if any source objects); \textbf{B3} the proposed calibrated tiered gate; plus an oracle-map route for
 reference. \textbf{A1/A2/A3:} consume cached embeddings as representation evidence and extend them
-with a SANPO$\to$GND embedding-shift score that is itself a typed claim (A1); consume calibrated
+with a UMD$\to$GTown embedding-shift score that is itself a typed claim (A1); consume calibrated
 evidence and extend it to multi-source, per-tier thresholds that bound false admission on a
 calibration split~\cite{conformal} (A2); consume the typed causal claim and extend it to per-decision
 attribution (``$e$ rejected \emph{because of} C1''), verified exactly by deterministic counterfactual
 re-runs of the gate with each source ablated (A3).
-\textbf{Track ownership:} solo; I own all tracks (data/replay, perception, checkers/gate,
-evaluation/receipts).
+\textbf{Track ownership:} solo; I own all tracks.
 
-\textbf{Timeline.} \emph{Oct 31--Nov 6:} repository, lockfile, GND campus download and extraction,
+\textbf{Timeline.} \emph{Oct 31--Nov 6:} lockfile, extraction of UMD north chunks 04--14, map alignment,
 OSM cache, smoke config. \emph{Nov 7--13:} C1, C2, receipt schema, B0/B2. \emph{Nov 14--20:}
 embeddings, head, calibration, tiered gate and policy (B1/B3). \emph{Nov 21--30:} injection harness,
 I1 property tests, measured runtime and memory. \textbf{Dec 1 progress gate:} all gate items.
 \emph{Dec 2--10:} full evaluation, A3 attribution, poster (Dec 11). \emph{Dec 12--15:} report.
-\textbf{Fallbacks:} if GND extraction or label alignment fails for one campus, switch campuses or
-hand-label $\sim$200 edges from the GND map; if the camera head underperforms, report it and rely on
-the minimum (no-model) fallback; if stair edges are too few, pool two campuses.
+\textbf{Fallbacks:} if map-to-SLAM alignment fails, align by hand-picked control points or
+hand-label $\sim$200 edges from the GND map; if GND's extrinsics cannot be found, assume coincident
+base and chassis frames and validate by LiDAR ground-plane height; if the camera head underperforms, report it and rely on
+the minimum (no-model) fallback; if fused localization still leaves most edges unresolved, relax O1
+to parallel-edge ambiguity; if UMD alignment fails, GTown becomes primary.
 
 \renewcommand{\refname}{References (annotated)}
 \small
 \begin{thebibliography}{99}
 \setlength{\itemsep}{1pt}
 \bibitem{gnd} J.~Liang et al., ``GND: Global Navigation Dataset with multi-modal perception and
-multi-category traversability in outdoor campus environments,'' arXiv:2409.14262, 2024.
-\emph{Primary replay data and ground truth (traversability map, including stairs).}
-\bibitem{sanpo} S.~M.~Waghmare et al., ``SANPO: A scene understanding, accessibility, navigation,
-pathfinding, obstacle avoidance dataset,'' arXiv:2309.12172, 2023.
-\emph{Stairs/curb segmentation labels for training the terrain head; provides the viewpoint shift.}
+multi-category traversability in outdoor campus environments,'' in \emph{Proc.\ IEEE ICRA}, 2025,
+pp.~2383--2390, doi:10.1109/ICRA55743.2025.11128193; \url{https://cs.gmu.edu/~xiao/Research/GND/}.
+\emph{Primary replay data; its traversability map (yellow = stairs or curbs) is the edge ground truth.}
 \bibitem{osm} OpenStreetMap contributors, \url{https://www.openstreetmap.org}, ODbL.
-\emph{Map prior (footway/steps tags) that the gate treats as possibly stale.}
+\emph{Map prior (footway/steps tags) that the gate treats as possibly stale; weak stair labels for training the terrain head.}
 \bibitem{rosbags} Ternaris, \cl{rosbags} (pure-Python ROS bag I/O), \url{https://gitlab.com/ternaris/rosbags}.
 \emph{One-time bag conversion with no ROS install.}
 \bibitem{dinov2} M.~Oquab et al., ``DINOv2: Learning robust visual features without supervision,''
@@ -214,10 +221,19 @@ corruptions and perturbations,'' ICLR, 2019. \emph{Corruption families and sever
 \appendix
 \section{Data-Access Confirmation, Repository, and Disclosures}
 
-\textbf{GND:} CC0 1.0, publicly downloadable. \todo{confirm campus chosen, download completed, size on
-disk, and that the traversability map and sensor extrinsics are present.} \textbf{SANPO:} CC BY 4.0,
-public. \todo{confirm subset downloaded.} \textbf{OSM:} ODbL; campus extract cached as GeoJSON at
-setup. No account, payment, or API is required. \textbf{Repository:} \repourl.
+\sloppy\textbf{GND (CC0 1.0, public; confirmed Oct 28, 2026).} \emph{UMD map 3 (primary).} Downloaded and
+inspected: the traversability map (6036$\times$6881 RGBA PNG; five classes, verified against the paper's
+legend), the north and south SLAM packages (keyframe poses, \cl{times.txt}, pose graph, global and
+ground-removed clouds; north 16:26:39--16:50:35 UTC, 1,792 keyframes), and bag
+\cl{UMD\_map3\_1\_mckeldin\_north\_}\allowbreak\cl{chunk01.bag} (6.5\,GB; 150\,s; topics \cl{/camera},
+\cl{/camera\_processed}, \cl{/camera\_info}, \cl{/ouster/points}, \cl{/ouster/imu},
+\cl{/mavros/global\_position/raw/fix}, \cl{/imu/data}, \cl{/odometry/filtered}, \cl{/tf}). The north
+session has 15 public chunks; all are downloaded and were read end to end on Oct 30, and chunks 04--14 cover the SLAM trajectory. \emph{GTown (held-out).} Downloaded and inspected: the SLAM package, the
+traversability map, and \cl{GTown2\_chunk01.bag} (3.2\,GB; 420\,s; Velodyne, ZED2, u-blox F9P,
+IMU, odometry, \cl{/tf\_static}). All bags read end to end with \cl{rosbags} 0.11.9 on CPU, with no
+ROS install. Pending: GND's published camera/LiDAR extrinsics (none are inside the bags; see fallback). \textbf{OSM:} ODbL;
+campus extract queried successfully on Oct 30 and cached as GeoJSON at setup. No account, payment, or API is required.
+\textbf{Repository:} \repourl.
 \textbf{Disclosures (pending instructor feedback on the idea brief):} (1) A self-recorded campus
 sequence is \emph{not} part of the graded path; if permitted it will be released with the repository
 and used only as qualitative held-out evidence. (2) This project may share a frozen vision front-end
@@ -232,18 +248,22 @@ gate, policy, receipts, failure-injection evaluation) are distinct and developed
 seed: 0
 device: cpu
 data:
-  campus: gnd_TODO
+  campus: gnd_umd_map3_north
+  bags: [chunk04]
   max_frames: 200
   rate_hz: 2
   cache_dir: data/cache
 graph: {max_edges: 20}
+ground_truth:
+  stairs_min_area_m2: 20
 perception:
   backbone: dinov2_vits14
   embeddings: cached
   head: linear
 checkers:
-  c1_step: {h_lim_m: 0.10, n_min: 200}
-  c2_loc:  {k_sigma: 2.0}
+  c1_step: {h_lim_m: 0.05, n_min: 200}
+  c2_loc:  {fusion: gps_odom_kf,
+            k_sigma: 2.0}
 gate: {threshold_method: fixed,
        tau_t2: 0.05}
 policies: [b2_veto, b3_tiered]
@@ -258,19 +278,27 @@ out: experiments/smoke
 seed: 0
 device: cpu
 data:
-  campus: gnd_TODO
+  campus: gnd_umd_map3_north
+  bags: [chunk04..chunk14]
+  heldout: {campus: gnd_gtown,
+            bags: [GTown2_chunk01]}
   max_frames: null
   rate_hz: 2
   cache_dir: data/cache
 graph: {max_edges: null}
+ground_truth:
+  stairs_min_area_m2: 20
 perception:
   backbone: dinov2_vits14
   embeddings: cached
   head: linear
+  labels: osm_steps
+  split: by_location
   calibration: temperature
 checkers:
-  c1_step: {h_lim_m: 0.10, n_min: 200}
-  c2_loc:  {k_sigma: 2.0}
+  c1_step: {h_lim_m: 0.05, n_min: 200}
+  c2_loc:  {fusion: gps_odom_kf,
+            k_sigma: 2.0}
 gate:
   threshold_method: conformal
   false_admission_target: 0.01
@@ -279,7 +307,7 @@ policies: [b0_map, b1_camera,
 injections: [none, cam_dropout,
   lidar_dropout, blur, low_light,
   gps_bias, gps_drift, map_flip,
-  substitution]
+  substitution, heldout_gtown]
 seeds: [0, 1, 2, 3, 4]
 out: experiments/cpu
 \end{lstlisting}
@@ -289,7 +317,7 @@ out: experiments/cpu
 
 No scale-up is required, and every graded result comes from the CPU baseline. If central resources
 are awarded after the progress gate, I would request $\le$4 GPU hours to fine-tune the terrain head
-end to end on SANPO, to test whether reduced viewpoint shift lowers unnecessary rejection at equal false
+end to end on the OSM-labeled training locations, to test whether task-specific features lower unnecessary rejection at equal false
 admission. Outputs would be cached as frozen embeddings and replayed deterministically, and GPU usage
 would be reported separately. No paid API is requested.
 
