@@ -1,4 +1,4 @@
-# Data: raw GND bags, SANPO, and caches are far too large to commit
+# Data: raw GND bags and caches are far too large to commit
 data/
 *.bag
 *.db3
@@ -6,6 +6,13 @@ data/
 
 # Course-provided materials (not ours to redistribute)
 proposal/final_project_rfp.pdf
+a2_report.pdf
+
+# Local files
+CLAUDE.md
+
+# Publisher PDFs of cited papers (copyrighted; retrieve via the DOIs in ref/ref.bib)
+ref/*.pdf
 
 # LaTeX build artifacts
 *.aux
@@ -32,3 +39,6 @@ venv/
 .DS_Store
 Zone.Identifier
 *:Zone.Identifier
+
+# Experiment outputs (model checkpoints; receipts and json summaries are committed)
+experiments/**/*.pt

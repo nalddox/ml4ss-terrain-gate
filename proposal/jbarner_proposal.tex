@@ -1,43 +1,63 @@
-\documentclass[10pt,letterpaper]{article}
-
-\usepackage[margin=0.7in]{geometry}
-\usepackage[T1]{fontenc}
-\usepackage{lmodern}
-\usepackage{microtype}
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+\usepackage{hyperref}
 \usepackage{amsmath}
-\usepackage{booktabs}
-\usepackage{tabularx}
-\usepackage[shortlabels]{enumitem}
-\usepackage{titlesec}
-\usepackage{listings}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{lipsum}
+\usepackage{multicol}
 \usepackage{xcolor}
-\usepackage[hidelinks]{hyperref}
+\usepackage{natbib}
+\usepackage[font=small]{caption}
+\addtolength{\abovecaptionskip}{-3mm}
+\addtolength{\textfloatsep}{-5mm}
+\setlength\columnsep{20pt}
 
-\titlespacing*{\section}{0pt}{5pt plus 1pt}{2pt}
-\titlespacing*{\subsection}{0pt}{3pt plus 1pt}{1pt}
-\titleformat*{\section}{\normalsize\bfseries}
-\titleformat*{\subsection}{\small\bfseries}
-\setlist{nosep,leftmargin=*}
-\setlength{\parskip}{2pt}
-\setlength{\parindent}{0pt}
-
-\lstset{basicstyle=\ttfamily\footnotesize,columns=fullflexible,frame=single,
-  breaklines=true,aboveskip=3pt,belowskip=3pt}
-
-% Placeholders to resolve before submission.
-\newcommand{\repourl}{\url{https://github.com/nalddox/ml4ss-terrain-gate}}
-\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\usepackage[a4paper,left=1.50cm, right=1.50cm, top=1.50cm, bottom=1.50cm]{geometry}
 
 \newcommand{\cl}[1]{\texttt{#1}}
 
+\author{}
+
+\title{2027--2028 Bloomberg Data Science Ph.D. Fellowship Application}
+
 \begin{document}
+	
+	\begin{center}
+		{\Large \textbf{Evidence-Gated Terrain Admission for a Wheeled Delivery Robot}}\\
+		\vspace{1em}
+		{\large Jeff Barner}\\
+		\vspace{1em}
+		\textit{Department of Electrical and Computer Engineering, Rutgers University}
+	\end{center}
+	
 
-\begin{center}
-{\large\bfseries Evidence-Gated Terrain Admission for a Wheeled Delivery Robot}\\[2pt]
-{\small ECE 532 Final Project Proposal (graduate track, solo) \quad Jeff Barner \quad November 6, 2026}\\
-{\small Repository: \repourl}
-\end{center}
+	\begin{center}
+		\rule{150mm}{0.2mm}
+	\end{center}		
 
+	\begin{abstract}
+	
+	This document contains the instructions for preparing a valid 2027--2028 Bloomberg Data Science Ph.D. Fellowship Application research proposal. This document conforms to its own specifications and is an example of what your proposal should look like.
+	
+	The abstract should briefly describe the proposal and make the case for the proposal to non-experts in your particular field. The rest of the proposal should be directed at a technical data science audience.
+	
+	\textbf{Collaborators}: Dr. Jorge Ortiz, Rutgers University
+	\end{abstract}
+
+	\begin{center}
+		\rule{150mm}{0.2mm}
+	\end{center}		
+
+	\vspace{5mm}
+	
+\begin{multicols*}{2}
+
+\section{Introduction}
+ 
 \section{Problem and Decision Boundary}
 
 A wheeled delivery robot plans over a campus sidewalk graph whose edge labels come from a
@@ -57,19 +77,19 @@ unnecessary rejection and deferral, including under injected sensor and map faul
 
 \section{Modalities, Data, Typed Claims, Risks, and Obligations}
 
-\textbf{Data.} \emph{GND}~\cite{gnd} (CC0). \textbf{Primary:} UMD map~3 (McKeldin Mall), north
+\textbf{Data.} \emph{GND}~\cite{liang2025} (CC0). \textbf{Primary:} UMD map~3 (McKeldin Mall), north
 session: a 24\,min, 1.9\,km Clearpath Jackal drive (bag chunks 04--14, $\sim$69\,GB) with a 32-beam
 Ouster LiDAR (10\,Hz), wide-angle RGB (640$\times$480, 15\,Hz), GPS (5\,Hz; reported $\sigma$ median
 9.6\,m), wheel/IMU odometry, 1,792 LiDAR-SLAM keyframe poses, and a human-labeled five-class
-traversability map in which yellow marks \emph{stairs or curbs}~\cite{gnd} ($\sim$95 candidate stair
+traversability map in which yellow marks \emph{stairs or curbs}~\cite{liang2025} ($\sim$95 candidate stair
 regions). \textbf{Held-out:} Georgetown (GTown; different campus and
 sensors) as a shift condition.
 \emph{OSM}~\cite{osm} (ODbL): footway graph and \cl{highway=steps} tags, cached once as GeoJSON.
 \textbf{Head labels:} weak positives where an OSM stair lies 3--25\,m ahead, split by location with buffers;
 the GND map stays out of training. GPS estimate, ignoring occlusion: $\sim$20 route sites, $\sim$840 positive frames.
-Bags are converted once with the pure-Python \cl{rosbags} library~\cite{rosbags}; no ROS or network
+Bags are converted once with the pure-Python \cl{rosbags} library\footnote{\url{https://gitlab.com/ternaris/rosbags}}; no ROS or network
 is needed afterward. \textbf{Alignment and ground truth:} the traversability map was annotated on a
-top-down projection of the LiDAR global map~\cite{gnd}, so map pixels are tied to the SLAM frame by a
+top-down projection of the LiDAR global map~\cite{liang2025}, so map pixels are tied to the SLAM frame by a
 2D similarity transform fitted once (ground-removed top view $\leftrightarrow$ obstacle layer); GPS is
 kept out of the ground-truth path and serves only as independent evidence for C2. Observations are
 associated with edges in this world frame (camera and LiDAR via GND's published extrinsics). An edge is a ground-truth hazard if its footprint intersects yellow:
@@ -78,23 +98,28 @@ This curb/stairs split is my own definition, not GND's.
 
 \textbf{Typed claims.} Every claim is a typed record with fields \cl{edge}, \cl{predicate},
 \cl{value}, \cl{uncertainty}, \cl{source}, \cl{tier}, and \cl{provenance} (sensor, timestamp, frame
-index, SHA-256 of the cached artifact, and model/checker version).
-\begin{center}\small
-\begin{tabularx}{\linewidth}{@{}llX@{}}
-\toprule
-Source & Example claim & Role \\
-\midrule
-RGB + frozen embedding & \cl{terrain(e)=stairs, p=0.91} & Calibrated semantic hazard evidence (A1/A2) \\
-LiDAR geometry & \cl{max\_step(e)=0.14\,m, n\_pts=812} & Independent physical evidence (checker C1) \\
-Map prior (OSM) & \cl{tag(e)=footway} & Planning prior; assumed possibly stale \\
-GPS + odometry & \cl{on\_edge(e), sigma=2.4\,m, d\_sep=3.4\,m} & Attribution of evidence to one edge (checker C2) \\
-\bottomrule
-\end{tabularx}
-\end{center}
+index, SHA-256 of the cached artifact, and model/checker version). Table~\ref{tbl:claims} gives an example from each source.
+
+\begin{table*}
+	\centering
+	\small
+	\begin{tabular}{lll}
+		\hline
+		\textbf{Source} & \textbf{Example claim} & \textbf{Role} \\
+		\hline
+		RGB + frozen embedding & \cl{terrain(e)=stairs, p=0.91} & Calibrated semantic hazard evidence (A1/A2) \\
+		LiDAR geometry & \cl{max\_step(e)=0.14\,m, n\_pts=812} & Independent physical evidence (checker C1) \\
+		Map prior (OSM) & \cl{tag(e)=footway} & Planning prior; assumed possibly stale \\
+		GPS + odometry & \cl{on\_edge(e), sigma=2.4\,m, d\_sep=3.4\,m} & Attribution of evidence to one edge (checker C2) \\
+		\hline
+	\end{tabular}
+	\caption{Example typed claims by evidence source.}
+	\label{tbl:claims}
+\end{table*}
 
 \textbf{Risk tiers.} An edge's tier is the \emph{maximum} hazard asserted by any source (escalation
 only; no source can lower a tier): \textbf{T0} flat path; \textbf{T1} curb, single step, or curb cut;
-\textbf{T2} stairs. GND notes that wheeled robots cannot traverse stairs or curbs~\cite{gnd}, so the
+\textbf{T2} stairs. GND notes that wheeled robots cannot traverse stairs or curbs~\cite{liang2025}, so the
 platform step limit $h_{\text{lim}}$ is set conservatively below curb height (0.05\,m, configurable).
 
 \textbf{Verification obligations} (all must be \textsc{pass}; any \textsc{fail} $\Rightarrow$
@@ -112,23 +137,29 @@ UMD$\to$GTown shift degrading the camera (caught by O2/O3, and measured).
 \section{CPU Baseline: Estimated Runtime and Memory}
 
 Estimates (4 cores, 16\,GB) for $\sim$3.7k 2\,Hz frames ($\sim$2.9k UMD, $\sim$0.8k GTown); measured values go to \cl{compute.json} at the progress gate. Backbone:
-frozen DINOv2 ViT-S/14~\cite{dinov2} (fallback: MobileNetV3-Small), linear head.
-\begin{center}\small
-\begin{tabular}{@{}lrr@{}}
-\toprule
-Stage & Est.\ time & Peak RAM \\
-\midrule
-One-time extraction of $\sim$72\,GB of bags (raw images) to a 2\,Hz cache & $\sim$65\,min & $<$2\,GB \\
-Map alignment, OSM graph, edge association, ground-truth labels & $<$5\,min & $<$2\,GB \\
-Embed $\sim$3.7k GND frames ($\sim$60\,ms/frame) & $<$5\,min & $\sim$3\,GB \\
-Head training and temperature calibration~\cite{guo2017} & $<$3\,min & $<$2\,GB \\
-C1 ground fit (RANSAC~\cite{ransac}) and step height ($\sim$30\,ms/frame) & $\sim$5\,min & $<$2\,GB \\
-Gate, planner, receipts: 4 policies $\times$ 10 conditions $\times$ 5 seeds & $\sim$20\,min & $<$3\,GB \\
-\midrule
-Full baseline / evaluator path from cache & $\sim$1.7\,h / $\sim$25\,min & $<$6\,GB \\
-\bottomrule
-\end{tabular}
-\end{center}
+frozen DINOv2 ViT-S/14~\cite{oquab2024dinov} (fallback: MobileNetV3-Small), linear head. Table~\ref{tbl:cpu} lists each stage.
+
+\begin{table*}
+	\centering
+	\small
+	\begin{tabular}{lrr}
+		\hline
+		\textbf{Stage} & \textbf{Est.\ time} & \textbf{Peak RAM} \\
+		\hline
+		One-time extraction of $\sim$72\,GB of bags (raw images) to a 2\,Hz cache & $\sim$65\,min & $<$2\,GB \\
+		Map alignment, OSM graph, edge association, ground-truth labels & $<$5\,min & $<$2\,GB \\
+		Embed $\sim$3.7k GND frames ($\sim$60\,ms/frame) & $<$5\,min & $\sim$3\,GB \\
+		Head training and temperature calibration~\cite{guo2017} & $<$3\,min & $<$2\,GB \\
+		C1 ground fit (RANSAC~\cite{ransac1981}) and step height ($\sim$30\,ms/frame) & $\sim$5\,min & $<$2\,GB \\
+		Gate, planner, receipts: 4 policies $\times$ 10 conditions $\times$ 5 seeds & $\sim$20\,min & $<$3\,GB \\
+		\hline
+		Full baseline / evaluator path from cache & $\sim$1.7\,h / $\sim$25\,min & $<$6\,GB \\
+		\hline
+	\end{tabular}
+	\caption{Estimated CPU baseline runtime and memory by stage.}
+	\label{tbl:cpu}
+\end{table*}
+
 Both fit the 4\,h / 2\,h budgets; cached evaluation artifacts are estimated at $<$8\,GB.
 \textbf{Minimum fallback:} C1 + C2 + map prior, no learned model; still exercises claims,
 tiers, gate, receipt, invariant, and failure injection end to end.
@@ -153,7 +184,7 @@ and per-edge claims, obligation states, decision, A3 attribution, and I1 result.
 
 \textbf{Failure injection} (each paired with its expected detection and declared in the receipt):
 \emph{missing}: camera or LiDAR dropout ($\Rightarrow$ \textsc{unresolved}, never admit);
-\emph{corrupted}: blur, low light, glare~\cite{imagenetc}; LiDAR thinning; GPS bias of 3--10\,m and
+\emph{corrupted}: blur, low light, glare~\cite{hendrycks2018}; LiDAR thinning; GPS bias of 3--10\,m and
 random-walk drift ($\Rightarrow$ O1 fails); \emph{stale map}: flip $k\%$ of curb and stair edges to
 \cl{footway}; \emph{shifted}: unseen UMD locations, UMD$\to$GTown campus; \emph{adversarial evidence substitution}:
 flip the map \emph{and} replace stair image crops with flat-sidewalk crops, so that two of three sources
@@ -176,7 +207,7 @@ if any source objects); \textbf{B3} the proposed calibrated tiered gate; plus an
 reference. \textbf{A1/A2/A3:} consume cached embeddings as representation evidence and extend them
 with a UMD$\to$GTown embedding-shift score that is itself a typed claim (A1); consume calibrated
 evidence and extend it to multi-source, per-tier thresholds that bound false admission on a
-calibration split~\cite{conformal} (A2); consume the typed causal claim and extend it to per-decision
+calibration split~\cite{Angelopoulos2021} (A2); consume the typed causal claim and extend it to per-decision
 attribution (``$e$ rejected \emph{because of} C1''), verified exactly by deterministic counterfactual
 re-runs of the gate with each source ablated (A3).
 \textbf{Track ownership:} solo; I own all tracks.
@@ -192,144 +223,11 @@ base and chassis frames and validate by LiDAR ground-plane height; if the camera
 the minimum (no-model) fallback; if fused localization still leaves most edges unresolved, relax O1
 to parallel-edge ambiguity; if UMD alignment fails, GTown becomes primary.
 
-\renewcommand{\refname}{References (annotated)}
-\small
-\begin{thebibliography}{99}
-\setlength{\itemsep}{1pt}
-\bibitem{gnd} J.~Liang et al., ``GND: Global Navigation Dataset with multi-modal perception and
-multi-category traversability in outdoor campus environments,'' in \emph{Proc.\ IEEE ICRA}, 2025,
-pp.~2383--2390, doi:10.1109/ICRA55743.2025.11128193; \url{https://cs.gmu.edu/~xiao/Research/GND/}.
-\emph{Primary replay data; its traversability map (yellow = stairs or curbs) is the edge ground truth.}
-\bibitem{osm} OpenStreetMap contributors, \url{https://www.openstreetmap.org}, ODbL.
-\emph{Map prior (footway/steps tags) that the gate treats as possibly stale; weak stair labels for training the terrain head.}
-\bibitem{rosbags} Ternaris, \cl{rosbags} (pure-Python ROS bag I/O), \url{https://gitlab.com/ternaris/rosbags}.
-\emph{One-time bag conversion with no ROS install.}
-\bibitem{dinov2} M.~Oquab et al., ``DINOv2: Learning robust visual features without supervision,''
-TMLR, 2024. \emph{Frozen compact backbone for cached embeddings (A1).}
-\bibitem{guo2017} C.~Guo, G.~Pleiss, Y.~Sun, K.~Q.~Weinberger, ``On calibration of modern neural
-networks,'' ICML, 2017. \emph{Temperature scaling and ECE for calibrated terrain confidence (A2).}
-\bibitem{conformal} A.~N.~Angelopoulos, S.~Bates, ``A gentle introduction to conformal prediction and
-distribution-free uncertainty quantification,'' arXiv:2107.07511, 2021.
-\emph{Distribution-free threshold selection to bound false admission per tier.}
-\bibitem{ransac} M.~A.~Fischler, R.~C.~Bolles, ``Random sample consensus,'' CACM 24(6), 1981.
-\emph{Robust ground-plane fitting in checker C1.}
-\bibitem{imagenetc} D.~Hendrycks, T.~Dietterich, ``Benchmarking neural network robustness to common
-corruptions and perturbations,'' ICLR, 2019. \emph{Corruption families and severities for camera failure injection.}
-\end{thebibliography}
-\normalsize
+\end{multicols*}
 
-\appendix
-\section{Data-Access Confirmation, Repository, and Disclosures}
+\clearpage
 
-\sloppy\textbf{GND (CC0 1.0, public; confirmed Oct 28, 2026).} \emph{UMD map 3 (primary).} Downloaded and
-inspected: the traversability map (6036$\times$6881 RGBA PNG; five classes, verified against the paper's
-legend), the north and south SLAM packages (keyframe poses, \cl{times.txt}, pose graph, global and
-ground-removed clouds; north 16:26:39--16:50:35 UTC, 1,792 keyframes), and bag
-\cl{UMD\_map3\_1\_mckeldin\_north\_}\allowbreak\cl{chunk01.bag} (6.5\,GB; 150\,s; topics \cl{/camera},
-\cl{/camera\_processed}, \cl{/camera\_info}, \cl{/ouster/points}, \cl{/ouster/imu},
-\cl{/mavros/global\_position/raw/fix}, \cl{/imu/data}, \cl{/odometry/filtered}, \cl{/tf}). The north
-session has 15 public chunks; all are downloaded and were read end to end on Oct 30, and chunks 04--14 cover the SLAM trajectory. \emph{GTown (held-out).} Downloaded and inspected: the SLAM package, the
-traversability map, and \cl{GTown2\_chunk01.bag} (3.2\,GB; 420\,s; Velodyne, ZED2, u-blox F9P,
-IMU, odometry, \cl{/tf\_static}). All bags read end to end with \cl{rosbags} 0.11.9 on CPU, with no
-ROS install. Pending: GND's published camera/LiDAR extrinsics (none are inside the bags; see fallback). \textbf{OSM:} ODbL;
-campus extract queried successfully on Oct 30 and cached as GeoJSON at setup. No account, payment, or API is required.
-\textbf{Repository:} \repourl.
-\textbf{Disclosures (pending instructor feedback on the idea brief):} (1) A self-recorded campus
-sequence is \emph{not} part of the graded path; if permitted it will be released with the repository
-and used only as qualitative held-out evidence. (2) This project may share a frozen vision front-end
-with my Machine Vision course project; the ML4SS deliverables (claims, tiers, obligations, checkers,
-gate, policy, receipts, failure-injection evaluation) are distinct and developed only here.
-
-\section{Proposed Configurations}
-
-\begin{minipage}[t]{0.48\linewidth}
-\textbf{\cl{config/smoke.yaml}} (target $<$2\,min)
-\begin{lstlisting}
-seed: 0
-device: cpu
-data:
-  campus: gnd_umd_map3_north
-  bags: [chunk04]
-  max_frames: 200
-  rate_hz: 2
-  cache_dir: data/cache
-graph: {max_edges: 20}
-ground_truth:
-  stairs_min_area_m2: 20
-perception:
-  backbone: dinov2_vits14
-  embeddings: cached
-  head: linear
-checkers:
-  c1_step: {h_lim_m: 0.05, n_min: 200}
-  c2_loc:  {fusion: gps_odom_kf,
-            k_sigma: 2.0}
-gate: {threshold_method: fixed,
-       tau_t2: 0.05}
-policies: [b2_veto, b3_tiered]
-injections: [gps_bias_5m]
-seeds: [0]
-out: experiments/smoke
-\end{lstlisting}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.48\linewidth}
-\textbf{\cl{config/cpu.yaml}} (target $<$2\,h from cache)
-\begin{lstlisting}
-seed: 0
-device: cpu
-data:
-  campus: gnd_umd_map3_north
-  bags: [chunk04..chunk14]
-  heldout: {campus: gnd_gtown,
-            bags: [GTown2_chunk01]}
-  max_frames: null
-  rate_hz: 2
-  cache_dir: data/cache
-graph: {max_edges: null}
-ground_truth:
-  stairs_min_area_m2: 20
-perception:
-  backbone: dinov2_vits14
-  embeddings: cached
-  head: linear
-  labels: osm_steps
-  split: by_location
-  calibration: temperature
-checkers:
-  c1_step: {h_lim_m: 0.05, n_min: 200}
-  c2_loc:  {fusion: gps_odom_kf,
-            k_sigma: 2.0}
-gate:
-  threshold_method: conformal
-  false_admission_target: 0.01
-policies: [b0_map, b1_camera,
-           b2_veto, b3_tiered]
-injections: [none, cam_dropout,
-  lidar_dropout, blur, low_light,
-  gps_bias, gps_drift, map_flip,
-  substitution, heldout_gtown]
-seeds: [0, 1, 2, 3, 4]
-out: experiments/cpu
-\end{lstlisting}
-\end{minipage}
-
-\section{Optional Scale-Up Justification (separately labeled; not on the graded path)}
-
-No scale-up is required, and every graded result comes from the CPU baseline. If central resources
-are awarded after the progress gate, I would request $\le$4 GPU hours to fine-tune the terrain head
-end to end on the OSM-labeled training locations, to test whether task-specific features lower unnecessary rejection at equal false
-admission. Outputs would be cached as frozen embeddings and replayed deterministically, and GPU usage
-would be reported separately. No paid API is requested.
-
-\section{Reproducibility Plan (preview of the graduate appendix)}
-
-\begin{lstlisting}
-pytest -q
-python -m src.run --config config/smoke.yaml --device cpu
-python -m src.evaluate --config config/cpu.yaml --device cpu
-python -m utilities.verification.validate --strict experiments/receipt.json
-\end{lstlisting}
-The pipeline uses a pinned environment lockfile, fixed seeds, SHA-256 data manifests, cached
-embeddings and C1 outputs, and no network after setup.
-
+\bibliography{../ref/ref}
+\bibliographystyle{plainnat}
+	
 \end{document}

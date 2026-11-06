@@ -1,0 +1,41 @@
+seed: 0
+device: cpu
+threads: 4
+data:
+  campus: gnd_umd_map3_north
+  bags: [chunk04]
+  max_frames: 200
+  rate_hz: 2
+  cache_dir: data/cache
+  association: slam_poses
+graph: {max_edges: 20}
+ground_truth:
+  stairs_min_area_m2: 20
+labels:
+  source: gnd_map
+  split: by_location
+  classes: [flat, step_curb, stairs]
+features:
+  views: [camera, lidar, map]
+  camera: {backbone: dinov2_vits14, embeddings: cached}
+  lidar: {descriptor: step_height_histogram}
+  map: {source: osm, encoding: tag_onehot}
+fusion:
+  methods: [late, tmc]
+  fusion_embed_dim: 16
+  modality_drop_prob: 0.2
+  kl_anneal_epochs: 2
+  temporal: none
+  calibration: temperature
+  lr: 0.001
+  epochs: 5
+  batch_size: 64
+checkers:
+  c1_step: {h_lim_m: 0.05, n_min: 200}
+  c2_conflict: {kappa: 0.5}
+gate: {threshold_method: fixed,
+       tau_act: 0.85}
+policies: [b2_veto, b3_tmc]
+injections: [map_flip]
+seeds: [0]
+out: experiments/smoke

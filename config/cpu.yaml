@@ -1,0 +1,49 @@
+# Full CPU baseline. Layers: 0 scaffolding, 1 frozen evidence features (cached),
+# 2 fusion (the research focus), 3 RFP harness (claims, checkers, gate, receipt).
+seed: 0
+device: cpu
+threads: 4
+data:
+  campus: gnd_umd_map3_north
+  bags: [chunk04..chunk14]
+  heldout: {campus: gnd_gtown,
+            bags: [GTown2_chunk01]}
+  max_frames: null
+  rate_hz: 2
+  cache_dir: data/cache
+  association: slam_poses        # frame -> edge via SLAM keyframe poses
+graph: {max_edges: null}
+ground_truth:
+  stairs_min_area_m2: 20
+labels:
+  source: gnd_map                # GND traversability map, split by location
+  split: by_location
+  classes: [flat, step_curb, stairs]   # = risk tiers T0/T1/T2
+features:                        # layer 1: frozen, cached, not trained
+  views: [camera, lidar, map]
+  camera: {backbone: dinov2_vits14, embeddings: cached}
+  lidar: {descriptor: step_height_histogram}
+  map: {source: osm, encoding: tag_onehot}
+fusion:                          # layer 2
+  methods: [map_only, camera, lidar, early, late, attention,
+            ds_fixed, tmc, proposed]
+  fusion_embed_dim: 64
+  modality_drop_prob: 0.2
+  kl_anneal_epochs: 10
+  temporal: accumulate_approach  # proposed: accumulate evidence over frames
+  calibration: temperature
+  lr: 0.001
+  epochs: 50
+  batch_size: 128
+checkers:
+  c1_step: {h_lim_m: 0.05, n_min: 200}
+  c2_conflict: {kappa: 0.5}      # placeholder; set on the calibration split
+gate:
+  threshold_method: conformal
+  false_admission_target: 0.01
+policies: [b0_map, b2_veto, b3_tmc, b3_proposed]
+injections: [none, cam_dropout,
+  lidar_dropout, lidar_thinning, blur, low_light,
+  map_flip, substitution, heldout_gtown]
+seeds: [0, 1, 2, 3, 4]
+out: experiments/cpu

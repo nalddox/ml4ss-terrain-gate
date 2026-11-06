@@ -1,0 +1,8 @@
+name: ece532-project-fall2026
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - -r requirements.in
