@@ -1,0 +1,85 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=2cm]{geometry}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{bibentry}
+\usepackage{enumitem}
+
+\setlist[itemize]{leftmargin=*, itemsep=6pt}
+\newcommand{\entry}[2]{\nocite{#1}\item \bibentry{#1}\par\smallskip \emph{Use in this project:} #2}
+
+\begin{document}
+\nobibliography*
+\sloppy
+
+\begin{center}
+	{\large \textbf{Annotated References}}\\[4pt]
+	Evidential Fusion for Calibrated Edge Traversability on a Wheeled Delivery Robot\\
+	Jeff Barner, ECE 532 final project proposal
+\end{center}
+
+\section*{Cited in the proposal}
+
+\begin{itemize}
+	\entry{han2023}{Trusted Multi-View Classification (TMC). Each view yields a Dirichlet opinion
+	(belief and uncertainty), and opinions are combined with a reduced Dempster's rule. TMC is the
+	headline baseline and the method our proposed fusion extends with a label-age-discounted map view
+	and accumulation of evidence over the approach. Its conflict term is the quantity checker C2 tests.}
+
+	\entry{liang2025}{GND, the dataset. It supplies the Jackal robot logs (LiDAR, RGB camera,
+	odometry, SLAM poses) for UMD map~3 and Georgetown, and the human-labeled traversability map whose
+	stairs-or-curb class defines our \emph{hazard} label. CC0 licensed.}
+
+	\entry{osm}{The map prior. OSM footway tags give the map view's opinion, edit timestamps give
+	label age for the reliability discount, and mapped steps, kerbs and crossings set the risk tiers.
+	Extracts are fetched once as of the GND drive date and committed under the ODbL.}
+
+	\entry{oquab2024dinov}{DINOv2. A frozen ViT-S/14 backbone provides the cached camera embedding
+	(the camera view's feature). Using frozen features keeps perception out of scope and the pipeline
+	within the CPU budget.}
+
+	\entry{ransac1981}{RANSAC. Checker C1 fits a ground plane to the raw LiDAR points on an edge
+	with RANSAC and reports the largest step above it, a deterministic geometric check with no
+	learning.}
+
+	\entry{valente2018}{Dempster--Shafer fusion of LiDAR and camera in evidential grid maps with
+	hand-set masses. It is the non-learned evidential rung of the fusion ladder and the minimum CPU
+	fallback.}
+
+	\entry{zhang2023}{Quality-aware Multimodal Fusion (QMF). It weights modalities dynamically by
+	estimated quality, and serves as a second uncertainty-aware fusion baseline beside TMC.}
+
+	\entry{Angelopoulos2021}{Conformal prediction tutorial. Per-tier gate thresholds are set by
+	conformal calibration on a held-out split to bound the false-admission rate.}
+\end{itemize}
+
+\section*{Background, not cited in the proposal body}
+
+\begin{itemize}
+	\entry{sensoy2018}{Evidential deep learning: a classifier outputs Dirichlet evidence instead of a
+	softmax. It is the single-view basis of TMC and of our per-view evidence heads and loss.}
+
+	\entry{Lambert2021}{Map change detection by fusing sensor data with a possibly stale HD map. It is
+	the model for our stale-map injection, where map labels are corrupted on routes with known ground
+	truth.}
+
+	\entry{cao2024}{Predictive Dynamic Fusion. Related uncertainty-aware dynamic fusion; context for
+	the fusion ladder.}
+
+	\entry{EVORA2024}{Evidential traversability learning for risk-aware off-road navigation. Closest
+	related work on evidential uncertainty for traversability, applied to a single learned model
+	rather than to fusing sensor and map views.}
+
+	\entry{PIETRA2025}{Physics-informed evidential learning for out-of-distribution terrain. Related
+	work on making evidential traversability estimates hold up under distribution shift.}
+
+	\entry{guo2017}{Temperature scaling. Used to calibrate the softmax fusion baselines so they are
+	compared fairly against the evidential methods.}
+\end{itemize}
+
+\bibliographystyle{plainnat}
+\nobibliography{../ref/ref}
+
+\end{document}

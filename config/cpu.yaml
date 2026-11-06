@@ -46,8 +46,6 @@ gate:
   threshold_method: conformal
   false_admission_target: 0.01
 policies: [b0_map, b2_veto, b3_tmc, b3_proposed]
-injections: [none, cam_dropout,
-  lidar_dropout, lidar_thinning, blur, low_light,
-  map_flip, substitution, heldout_gtown]
+injections: [none, map_flip, adversarial, heldout_gtown]  # adversarial = map_flip + flat-sidewalk camera crops substituted for stairs
 seeds: [0, 1, 2, 3, 4]
 out: experiments/cpu
