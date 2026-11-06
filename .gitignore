@@ -44,3 +44,7 @@ Zone.Identifier
 
 # Experiment outputs (model checkpoints; receipts and json summaries are committed)
 experiments/**/*.pt
+
+# Submission tarballs (built by proposal_submission.sh)
+*.tar.gz
+proposal_submission.sh
