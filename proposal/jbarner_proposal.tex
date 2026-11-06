@@ -7,7 +7,6 @@
 \usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage{float}
-\usepackage{lipsum}
 \usepackage{multicol}
 \usepackage{xcolor}
 \usepackage{natbib}
@@ -20,208 +19,198 @@
 
 \newcommand{\cl}[1]{\texttt{#1}}
 
-\author{}
+\author{Jeff Barner}
 
-\title{2027--2028 Bloomberg Data Science Ph.D. Fellowship Application}
+\title{Evidential Fusion for Calibrated Edge Traversability on a Wheeled Delivery Robot}
 
 \begin{document}
-	
+
 	\begin{center}
-		{\Large \textbf{Evidence-Gated Terrain Admission for a Wheeled Delivery Robot}}\\
+		{\Large \textbf{Evidential Fusion for Calibrated Edge Traversability on a Wheeled Delivery Robot}}\\
 		\vspace{1em}
 		{\large Jeff Barner}\\
 		\vspace{1em}
 		\textit{Department of Electrical and Computer Engineering, Rutgers University}
 	\end{center}
-	
+
 
 	\begin{center}
 		\rule{150mm}{0.2mm}
-	\end{center}		
+	\end{center}
 
 	\begin{abstract}
-	
-	This document contains the instructions for preparing a valid 2027--2028 Bloomberg Data Science Ph.D. Fellowship Application research proposal. This document conforms to its own specifications and is an example of what your proposal should look like.
-	
-	The abstract should briefly describe the proposal and make the case for the proposal to non-experts in your particular field. The rest of the proposal should be directed at a technical data science audience.
-	
+
+	A sidewalk delivery robot follows a route from a map, but maps go stale: a path marked as a walkway
+	may contain stairs or a curb that a wheeled robot cannot cross. Camera and LiDAR can catch the error,
+	but each fails in its own way. This project combines camera, LiDAR, and map into one \emph{confidence}
+	that a path segment is safe, which also reports its uncertainty and when the sources disagree. The robot
+	crosses only on trustworthy confidence, looks closer when unsure, and reroutes around hazards. Evaluation
+	replays real campus robot logs with injected sensor faults and stale maps.
+
 	\textbf{Collaborators}: Dr. Jorge Ortiz, Rutgers University
 	\end{abstract}
 
 	\begin{center}
 		\rule{150mm}{0.2mm}
-	\end{center}		
+	\end{center}
 
-	\vspace{5mm}
-	
+	\vspace{1mm}
+
 \begin{multicols*}{2}
 
-\section{Introduction}
- 
 \section{Problem and Decision Boundary}
 
-A wheeled delivery robot plans over a campus sidewalk graph whose edge labels come from a
-map prior (OpenStreetMap). Map labels can be stale or wrong; a shortest-path planner that trusts
-an edge mislabeled \cl{footway} when it actually contains stairs or a curb commits the robot to an
-untraversable, potentially damaging segment. \textbf{Decision:} for each edge $e$ the planner proposes, may the
-robot commit to traversing $e$? The policy emits one of four outcomes:
-\textbf{Act} (admit and traverse); \textbf{Defer} (unresolved obligation and closer observations
-remain: continue approach and re-observe); \textbf{Repair} (an obligation fails, or remains
-unresolved with no evidence left: reject $e$, remove it, replan, and record a proposed map patch);
-\textbf{Handoff} (no admissible route to the goal remains: escalate to a remote operator).
-Costs are asymmetric: admitting stairs is catastrophic, a false rejection costs a detour. The gate is
-\emph{fail-closed}: an edge is inadmissible unless evidence affirmatively discharges every
-obligation for its risk tier. \textbf{Research question:} can a calibrated, tiered multi-source
-gate match a conservative ``reject if any source objects'' veto on false admission while reducing
-unnecessary rejection and deferral, including under injected sensor and map faults?
+A wheeled delivery robot follows a campus sidewalk graph whose edge labels come from a map prior
+(OpenStreetMap~\cite{osm}). Labels can be stale; trusting an edge tagged \cl{footway} that contains stairs
+or a curb commits the robot to an untraversable segment. \textbf{Decision:} for each edge $e$ on the route,
+may the robot commit to traversing $e$? Outcomes: \textbf{Act} (traverse); \textbf{Defer} (an obligation
+is unresolved and closer observations remain: continue the approach and re-observe); \textbf{Repair}
+(an obligation fails, or stays unresolved with no evidence left: remove $e$, replan, record a proposed map
+patch); \textbf{Handoff} (no admissible route remains: escalate to an operator). Costs are asymmetric:
+admitting stairs is catastrophic, a false rejection costs a detour. The gate is \emph{fail-closed}.
+\textbf{Research question:} does evidential fusion that treats the map as a reliability-discounted view
+and accumulates evidence over the approach give better-calibrated edge confidence than softmax fusion
+and standard TMC~\cite{han2023}, and does gating on it match a ``reject if any source objects'' veto on
+false admission while reducing unnecessary rejection and deferral, under injected sensor and map faults?
+\textbf{Motivation and focus:} in A2, a fixed softmax threshold became unsafe under shift (ECE
+0.05$\to$0.20; 27\% risk among acted windows). Evidential fusion~\cite{sensoy2018,han2023} adds explicit
+uncertainty and conflict. Perception is out of scope: views are frozen, cached features, and only small
+evidence heads and the fusion are trained.
 
 \section{Modalities, Data, Typed Claims, Risks, and Obligations}
 
 \textbf{Data.} \emph{GND}~\cite{liang2025} (CC0). \textbf{Primary:} UMD map~3 (McKeldin Mall), north
-session: a 24\,min, 1.9\,km Clearpath Jackal drive (bag chunks 04--14, $\sim$69\,GB) with a 32-beam
-Ouster LiDAR (10\,Hz), wide-angle RGB (640$\times$480, 15\,Hz), GPS (5\,Hz; reported $\sigma$ median
-9.6\,m), wheel/IMU odometry, 1,792 LiDAR-SLAM keyframe poses, and a human-labeled five-class
-traversability map in which yellow marks \emph{stairs or curbs}~\cite{liang2025} ($\sim$95 candidate stair
-regions). \textbf{Held-out:} Georgetown (GTown; different campus and
-sensors) as a shift condition.
-\emph{OSM}~\cite{osm} (ODbL): footway graph and \cl{highway=steps} tags, cached once as GeoJSON.
-\textbf{Head labels:} weak positives where an OSM stair lies 3--25\,m ahead, split by location with buffers;
-the GND map stays out of training. GPS estimate, ignoring occlusion: $\sim$20 route sites, $\sim$840 positive frames.
-Bags are converted once with the pure-Python \cl{rosbags} library\footnote{\url{https://gitlab.com/ternaris/rosbags}}; no ROS or network
-is needed afterward. \textbf{Alignment and ground truth:} the traversability map was annotated on a
-top-down projection of the LiDAR global map~\cite{liang2025}, so map pixels are tied to the SLAM frame by a
-2D similarity transform fitted once (ground-removed top view $\leftrightarrow$ obstacle layer); GPS is
-kept out of the ground-truth path and serves only as independent evidence for C2. Observations are
-associated with edges in this world frame (camera and LiDAR via GND's published extrinsics). An edge is a ground-truth hazard if its footprint intersects yellow:
-thin yellow lines are labeled curb/step (T1) and yellow regions $\ge A_{\min}$ are labeled stairs (T2).
-This curb/stairs split is my own definition, not GND's.
+session: a 24\,min, 1.9\,km Clearpath Jackal drive (bag chunks 04--14, $\sim$69\,GB) with 32-beam
+LiDAR, RGB (15\,Hz), odometry, 1,792 SLAM keyframe poses, and a human-labeled traversability map in
+which yellow marks \emph{stairs or curbs}~\cite{liang2025} ($\sim$95 regions). \textbf{Held-out:}
+Georgetown (different campus and sensors). \emph{OSM}~\cite{osm} (ODbL): footway graph and
+\cl{highway=steps} tags. Bags are cached once with the pure-Python \cl{rosbags}
+library\footnote{\url{https://gitlab.com/ternaris/rosbags}}; no ROS or network afterward.
+\textbf{Alignment and labels:} the traversability map was annotated on a top-down projection of the LiDAR
+map~\cite{liang2025}, so it is tied to the SLAM frame by a 2D similarity transform fitted once, and frames are
+associated with edges by SLAM pose. An edge's footprint intersecting thin yellow is \emph{step/curb}, a yellow
+region $\ge A_{\min}$ is \emph{stairs}, otherwise \emph{flat} (my definition, not GND's). These three
+classes train the evidence heads and fusion, split by location with buffers; Georgetown is never trained on.
 
-\textbf{Typed claims.} Every claim is a typed record with fields \cl{edge}, \cl{predicate},
-\cl{value}, \cl{uncertainty}, \cl{source}, \cl{tier}, and \cl{provenance} (sensor, timestamp, frame
-index, SHA-256 of the cached artifact, and model/checker version). Table~\ref{tbl:claims} gives an example from each source.
+\textbf{Views and typed claims.} Each view maps a frozen feature to an opinion $(\mathbf{b}, u)$ over
+\{flat, step, stairs\} with $\sum_k b_k + u = 1$. Every claim is a typed record (\cl{edge},
+\cl{predicate}, \cl{value}, \cl{uncertainty}, \cl{source}, \cl{tier}, \cl{provenance}: sensor, timestamp,
+frame, range to edge, SHA-256 of the cached artifact, model/checker version); Table~\ref{tbl:claims}.
 
 \begin{table*}
 	\centering
 	\small
 	\begin{tabular}{lll}
 		\hline
-		\textbf{Source} & \textbf{Example claim} & \textbf{Role} \\
+		\textbf{Source (frozen feature)} & \textbf{Example claim} & \textbf{Role} \\
 		\hline
-		RGB + frozen embedding & \cl{terrain(e)=stairs, p=0.91} & Calibrated semantic hazard evidence (A1/A2) \\
-		LiDAR geometry & \cl{max\_step(e)=0.14\,m, n\_pts=812} & Independent physical evidence (checker C1) \\
-		Map prior (OSM) & \cl{tag(e)=footway} & Planning prior; assumed possibly stale \\
-		GPS + odometry & \cl{on\_edge(e), sigma=2.4\,m, d\_sep=3.4\,m} & Attribution of evidence to one edge (checker C2) \\
+		Camera (DINOv2 ViT-S/14 embedding) & \cl{terrain(e): b=(.08,.06,.71), u=.15} & Semantic evidence (A1) \\
+		LiDAR (step-height histogram) & \cl{terrain(e): b=(.02,.64,.20), u=.14} & Geometric evidence \\
+		Map prior (OSM tag one-hot) & \cl{terrain(e): b=(.60,0,0), u=.40} & Prior; possibly stale \\
+		Fusion (TMC / proposed) & \cl{b=(.03,.35,.58), u=.04, K=.52} & Fused opinion (A2) \\
+		C1 step height (raw points) & \cl{max\_step(e)=0.14\,m, n=812} & Executable checker \\
 		\hline
 	\end{tabular}
-	\caption{Example typed claims by evidence source.}
+	\caption{Example typed claims; $K$ is the conflict mass between view opinions used by checker C2.}
 	\label{tbl:claims}
 \end{table*}
 
-\textbf{Risk tiers.} An edge's tier is the \emph{maximum} hazard asserted by any source (escalation
-only; no source can lower a tier): \textbf{T0} flat path; \textbf{T1} curb, single step, or curb cut;
-\textbf{T2} stairs. GND notes that wheeled robots cannot traverse stairs or curbs~\cite{liang2025}, so the
-platform step limit $h_{\text{lim}}$ is set conservatively below curb height (0.05\,m, configurable).
+\textbf{Risk tiers.} \textbf{T0} flat; \textbf{T1} curb or step; \textbf{T2} stairs. An edge's tier is the
+most severe class any source asserts with non-negligible belief (escalation only). Wheeled robots cannot
+cross stairs or curbs~\cite{liang2025}, so $h_{\text{lim}}$ = 0.05\,m, below curb height.
 
-\textbf{Verification obligations} (all must be \textsc{pass}; any \textsc{fail} $\Rightarrow$
-Repair; any \textsc{unresolved} $\Rightarrow$ Defer, or Repair if no closer evidence remains):
-\textbf{O1} (all tiers) attribution: C2 confirms the fused GPS+odometry $2\sigma$ ellipse intersects only
-$e$, which matters because ramps often run parallel to stairs. \textbf{O2} (T1+) geometry: C1 reports
-$h_{\max} < h_{\text{lim}}$ with point coverage $\ge n_{\min}$. \textbf{O3} (T2) corroboration: the
-calibrated $p(\text{stairs}) < \tau_2$ \emph{and} O2 holds on $\ge 2$ frames at distinct ranges.
-\textbf{O4} (all tiers) provenance: every claim used resolves to a hashed cached artifact.
-\textbf{Risks:} noisy UMD GPS ($\sigma\approx$10\,m; C2 fuses odometry; residual deferral measured); few independent stair sites (counted from SLAM poses; Wilson CIs on T2; achieved calibration bound reported); map-to-SLAM alignment error (residual reported, boundary edges flagged);
-no camera--LiDAR transforms in the bags (claims fused per edge in the world frame, never per pixel);
-OSM label errors shared with the map prior (disjoint locations; OSM--GND agreement reported);
-UMD$\to$GTown shift degrading the camera (caught by O2/O3, and measured).
+\textbf{Verification obligations} (all must \textsc{pass}; any \textsc{fail} $\Rightarrow$ Repair; any
+\textsc{unresolved} $\Rightarrow$ Defer, or Repair if no closer evidence remains):
+\textbf{O1} (all tiers) consistency: C2 finds conflict $K < \kappa$ among available views.
+\textbf{O2} (T1+) geometry: C1 reports $h_{\max} < h_{\text{lim}}$ with coverage $\ge n_{\min}$.
+\textbf{O3} (all tiers) confidence: fused $b_{\text{flat}} \ge \tau_{\text{tier}}$ and $u \le \tau_u$;
+for T2, O2 must also hold on $\ge 2$ frames at distinct ranges.
+\textbf{O4} (all tiers) provenance: every claim resolves to a hashed cached artifact.
+\textbf{Risks:} few independent stair sites (counted first; Wilson CIs); Dempster's rule renormalizes
+away stale-map conflict (discounting, C2); C1 and the LiDAR view share a sensor, not code (a stated
+limitation); map-to-SLAM alignment error (residual reported); no camera--LiDAR transforms in the bags
+(fusion per edge in the world frame, never per pixel).
 
 \section{CPU Baseline: Estimated Runtime and Memory}
 
-Estimates (4 cores, 16\,GB) for $\sim$3.7k 2\,Hz frames ($\sim$2.9k UMD, $\sim$0.8k GTown); measured values go to \cl{compute.json} at the progress gate. Backbone:
-frozen DINOv2 ViT-S/14~\cite{oquab2024dinov} (fallback: MobileNetV3-Small), linear head. Table~\ref{tbl:cpu} lists each stage.
+Estimates (4 cores, 16\,GB) for $\sim$3.7k 2\,Hz frames (2.9k UMD, 0.8k Georgetown); measured values
+go to \cl{compute.json}. Heads and fusion are small MLPs on cached features (A2's trained in $<$1\,s).
+DINOv2 $\sim$60\,ms/frame; LiDAR descriptors and C1 RANSAC~\cite{ransac1981} $\sim$30\,ms/frame;
+temperature calibration~\cite{guo2017}.
 
-\begin{table*}
-	\centering
-	\small
-	\begin{tabular}{lrr}
+\begin{center}
+	\footnotesize
+	\begin{tabular}{@{}lrr@{}}
 		\hline
-		\textbf{Stage} & \textbf{Est.\ time} & \textbf{Peak RAM} \\
+		\textbf{Stage} & \textbf{Time} & \textbf{RAM} \\
 		\hline
-		One-time extraction of $\sim$72\,GB of bags (raw images) to a 2\,Hz cache & $\sim$65\,min & $<$2\,GB \\
-		Map alignment, OSM graph, edge association, ground-truth labels & $<$5\,min & $<$2\,GB \\
-		Embed $\sim$3.7k GND frames ($\sim$60\,ms/frame) & $<$5\,min & $\sim$3\,GB \\
-		Head training and temperature calibration~\cite{guo2017} & $<$3\,min & $<$2\,GB \\
-		C1 ground fit (RANSAC~\cite{ransac1981}) and step height ($\sim$30\,ms/frame) & $\sim$5\,min & $<$2\,GB \\
-		Gate, planner, receipts: 4 policies $\times$ 10 conditions $\times$ 5 seeds & $\sim$20\,min & $<$3\,GB \\
+		Bags (72\,GB) $\to$ 2\,Hz cache, once & 65\,min & $<$2\,GB \\
+		Alignment, graph, association, labels & $<$5\,min & $<$2\,GB \\
+		Frozen features, C1 & 10\,min & 3\,GB \\
+		Fusion ladder (9 methods $\times$ 5 seeds) & $<$10\,min & $<$2\,GB \\
+		Gate, receipts (4 pol.\ $\times$ 9 cond.\ $\times$ 5) & 20\,min & $<$3\,GB \\
 		\hline
-		Full baseline / evaluator path from cache & $\sim$1.7\,h / $\sim$25\,min & $<$6\,GB \\
+		Baseline / evaluator & 1.8\,h / 30\,min & $<$6\,GB \\
 		\hline
 	\end{tabular}
-	\caption{Estimated CPU baseline runtime and memory by stage.}
-	\label{tbl:cpu}
-\end{table*}
+\end{center}
 
-Both fit the 4\,h / 2\,h budgets; cached evaluation artifacts are estimated at $<$8\,GB.
-\textbf{Minimum fallback:} C1 + C2 + map prior, no learned model; still exercises claims,
-tiers, gate, receipt, invariant, and failure injection end to end.
+Both fit the 4\,h / 2\,h budgets; cache $<$8\,GB. \textbf{Minimum fallback:} LiDAR and map views with fixed Dempster--Shafer masses~\cite{valente2018}
+(no learned model) plus C1 and C2, still exercising the full claim--gate--receipt path.
 
 \section{Checkers, Action Gate, Invariant, and Failure Injection}
 
-\textbf{Two independent checkers} use disjoint evidence and code paths.
-\textbf{C1, geometric step-height:} fits a local ground plane to LiDAR points on the edge footprint and
-reports the maximum surface discontinuity; it involves no learning and ignores semantic labels.
-\textbf{C2, localization attribution:} fuses GPS with wheel/IMU odometry in a Kalman filter and uses
-the fused covariance and graph geometry to decide whether an observation belongs to a single edge. \textbf{Gate:} a pure, deterministic function
-$(\text{claims}, \text{tier}) \mapsto$ \{Act, Defer, Repair, Handoff\}. Missing evidence yields
-\textsc{unresolved}, never \textsc{pass}. Deferral is real in replay: it consumes the next cached
-observation of $e$ at closer range. \textbf{Invariant I1:} \emph{no edge is admitted unless every
-obligation for its final tier is \textup{\textsc{pass}}, the tier is at least the maximum asserted by any
-claim, and every supporting claim's hash resolves.} I1 is checked on every receipt by
-\cl{validate --strict} and by property-based tests over randomized claim sets.
-\textbf{Repair:} the planner removes the rejected edge and replans; the receipt records a proposed map
-patch (\cl{tag(e): footway$\to$steps}) with its supporting evidence.
-\textbf{Receipt:} \cl{receipt.json} records config and data-manifest hashes, seed, injected faults,
-and per-edge claims, obligation states, decision, A3 attribution, and I1 result.
+\textbf{Two independent checkers} with disjoint inputs and code. \textbf{C1, geometric step height:} fits a
+local ground plane to raw LiDAR points on the edge footprint and reports the maximum discontinuity; no
+learning, no labels. \textbf{C2, fusion conflict:} computes the Dempster conflict mass
+$K = \sum_{i\neq j} b^{(v)}_i b^{(w)}_j$ for each pair of available view opinions and reports the maximum;
+it reads only opinions, never geometry, and flags exactly the disagreement a stale map creates.
+\textbf{Gate:} a pure, deterministic function (claims, tier) $\mapsto$ \{Act, Defer, Repair, Handoff\}.
+Missing evidence yields \textsc{unresolved}, never \textsc{pass}. Deferral is real in replay: it consumes the
+next cached observation of $e$ at closer range (A2's ``acquire'' action). \textbf{Invariant I1:} \emph{no edge
+is admitted unless every obligation for its final tier is \textup{\textsc{pass}}, the tier is at least the most
+severe one asserted by any claim, and every supporting claim's hash resolves.} I1 is checked on every
+receipt by \cl{validate --strict} and by property-based tests over randomized claim sets.
+\textbf{Repair:} remove the rejected edge, replan, and record a proposed map patch
+(\cl{tag(e): footway$\to$steps}) with its evidence. \textbf{Receipt:} \cl{receipt.json} records config and
+data hashes, seed, faults, and per-edge claims, obligations, decision, A3 attribution, and I1.
 
-\textbf{Failure injection} (each paired with its expected detection and declared in the receipt):
-\emph{missing}: camera or LiDAR dropout ($\Rightarrow$ \textsc{unresolved}, never admit);
-\emph{corrupted}: blur, low light, glare~\cite{hendrycks2018}; LiDAR thinning; GPS bias of 3--10\,m and
-random-walk drift ($\Rightarrow$ O1 fails); \emph{stale map}: flip $k\%$ of curb and stair edges to
-\cl{footway}; \emph{shifted}: unseen UMD locations, UMD$\to$GTown campus; \emph{adversarial evidence substitution}:
-flip the map \emph{and} replace stair image crops with flat-sidewalk crops, so that two of three sources
-agree on ``flat'' and only C1 stands between the robot and the stairs.
-\textbf{Explicit unwarranted claims:} no claim of real-world deployment safety; of generalization
-beyond the two evaluated campuses; of GTown stair rates ($\sim$2 regions); of detecting hazards other than steps, stairs, and curbs (ice, potholes,
-pedestrians); of step heights below LiDAR resolution; or of physical causation. A3 attributions
-describe the decision procedure, not the world.
+\textbf{Failure injection} (expected detection in parentheses, declared in the receipt):
+\emph{missing}: camera or LiDAR dropout (higher $u$, \textsc{unresolved}); \emph{corrupted}: blur, low
+light~\cite{hendrycks2018}, LiDAR thinning (higher $u$ or C1 coverage fails); \emph{stale map}: flip $k\%$
+of curb and stair edges to \cl{footway} (C2 conflict); \emph{shifted}: unseen UMD locations, Georgetown;
+\emph{adversarial}: flip the map \emph{and} swap stair crops for flat-sidewalk crops, so only the LiDAR
+view and C1 stand between the robot and the stairs.
+\textbf{Explicit unwarranted claims:} none about real-world deployment safety, campuses beyond the two
+evaluated, Georgetown stair rates ($\sim$2 regions), hazards other than steps, stairs, and curbs, steps
+below LiDAR resolution, or physical causation (A3 attributions describe the decision procedure).
 
 \section{Metrics, Baselines, Ownership, Timeline, and Fallback}
 
-\textbf{Task performance} (reported separately): stairs AUROC/F1 and ECE on held-out GND locations, and C1 agreement with
-ground-truth step edges. \textbf{Policy behavior:} false admission rate (primary; Wilson 95\% CI),
-unnecessary rejection, unnecessary deferral, handoff rate, checker coverage (fraction of admitted
-edges whose obligations were all discharged by an executable checker), failure detection (fraction of
-injected faults flagged in the receipt), repair success (replanned route reaches the goal over
-ground-truth-traversable edges only; overhead relative to an oracle-map route), runtime, and peak RSS.
-\textbf{Baselines:} B0 map-only shortest path; B1 camera-only threshold; B2 conservative veto (reject
-if any source objects); \textbf{B3} the proposed calibrated tiered gate; plus an oracle-map route for
-reference. \textbf{A1/A2/A3:} consume cached embeddings as representation evidence and extend them
-with a UMD$\to$GTown embedding-shift score that is itself a typed claim (A1); consume calibrated
-evidence and extend it to multi-source, per-tier thresholds that bound false admission on a
-calibration split~\cite{Angelopoulos2021} (A2); consume the typed causal claim and extend it to per-decision
-attribution (``$e$ rejected \emph{because of} C1''), verified exactly by deterministic counterfactual
-re-runs of the gate with each source ablated (A3).
-\textbf{Track ownership:} solo; I own all tracks.
+\textbf{Task performance} (fusion quality, reported separately): ECE and reliability diagrams, NLL,
+stairs F1, AUROC for detecting stale edges from $u$ and $K$, risk--coverage curves, and distance to a
+confident decision during the approach, on held-out UMD locations and Georgetown. \textbf{Fusion ladder:}
+(0) map only; (1) camera-only and LiDAR-only softmax; (2) early, late, and attention fusion (from A2);
+(3) fixed Dempster--Shafer masses~\cite{valente2018}; (4) TMC~\cite{han2023} (headline baseline) and
+QMF~\cite{zhang2023}; (5) proposed: map as a reliability-discounted view, evidence accumulated over the
+approach, and conflict handling. \textbf{Policy behavior:} false admission (primary; Wilson 95\% CI),
+unnecessary rejection and deferral, handoff rate, checker coverage, failure detection, repair success
+(goal reached over truly traversable edges; overhead vs.\ an oracle map), runtime, and peak RSS.
+\textbf{Policies:} B0 map-only route; B2 conservative veto; B3a gate on TMC; B3b gate on the proposed
+fusion. \textbf{A1/A2/A3:} cached embeddings, extended with a UMD$\to$Georgetown embedding-shift claim (A1);
+calibrated evidence, extended from softmax confidence to evidential opinions with per-tier conformal
+thresholds bounding false admission~\cite{Angelopoulos2021} (A2); the typed causal claim, extended to
+per-decision attribution (``$e$ rejected \emph{because of} the LiDAR view'') verified by counterfactual
+re-runs with each view ablated (A3). \textbf{Track ownership:} solo.
 
-\textbf{Timeline.} \emph{Oct 31--Nov 6:} lockfile, extraction of UMD north chunks 04--14, map alignment,
-OSM cache, smoke config. \emph{Nov 7--13:} C1, C2, receipt schema, B0/B2. \emph{Nov 14--20:}
-embeddings, head, calibration, tiered gate and policy (B1/B3). \emph{Nov 21--30:} injection harness,
-I1 property tests, measured runtime and memory. \textbf{Dec 1 progress gate:} all gate items.
-\emph{Dec 2--10:} full evaluation, A3 attribution, poster (Dec 11). \emph{Dec 12--15:} report.
-\textbf{Fallbacks:} if map-to-SLAM alignment fails, align by hand-picked control points or
-hand-label $\sim$200 edges from the GND map; if GND's extrinsics cannot be found, assume coincident
-base and chassis frames and validate by LiDAR ground-plane height; if the camera head underperforms, report it and rely on
-the minimum (no-model) fallback; if fused localization still leaves most edges unresolved, relax O1
-to parallel-edge ambiguity; if UMD alignment fails, GTown becomes primary.
+\textbf{Timeline.} \emph{Nov 7--13:} cache UMD chunks 04--14, alignment, graph, association, labels,
+stair-approach count. \emph{Nov 14--20:} features, C1, ladder rungs 0--4 (2 and 4 ported from A2 and
+tested). \emph{Nov 21--30:} C2, gate, receipts, B0/B2/B3a, one injection, measured compute.
+\textbf{Dec 1 progress gate.} \emph{Dec 2--10:} rung 5 and B3b, all injections, A3, poster.
+\emph{Dec 12--15:} report. \textbf{Fallbacks:} few stair approaches $\Rightarrow$ binary classes;
+alignment fails $\Rightarrow$ control points or $\sim$200 hand-labeled edges; no GND extrinsics
+$\Rightarrow$ coincident frames checked by ground-plane height; rung 5 loses to TMC $\Rightarrow$
+B3a is the gated system; UMD fails $\Rightarrow$ Georgetown primary.
 
 \end{multicols*}
 
@@ -229,5 +218,5 @@ to parallel-edge ambiguity; if UMD alignment fails, GTown becomes primary.
 
 \bibliography{../ref/ref}
 \bibliographystyle{plainnat}
-	
+
 \end{document}
