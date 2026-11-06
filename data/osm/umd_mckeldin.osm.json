@@ -1,0 +1,27 @@
+{
+  "region": "umd_mckeldin",
+  "bbox_swne": [
+    38.9815,
+    -76.95,
+    38.9905,
+    -76.936
+  ],
+  "as_of": "2024-08-22T16:26:39Z",
+  "endpoint": "https://overpass-api.de/api/interpreter",
+  "query": "[out:xml][timeout:120][date:\"2024-08-22T16:26:39Z\"];\n(\n  way[\"highway\"](38.981500,-76.950000,38.990500,-76.936000);\n  node[\"kerb\"](38.981500,-76.950000,38.990500,-76.936000);\n  node[\"barrier\"=\"kerb\"](38.981500,-76.950000,38.990500,-76.936000);\n  node[\"highway\"~\"^(crossing|steps)$\"](38.981500,-76.950000,38.990500,-76.936000);\n);\n(._; >;);\nout meta;\n",
+  "fetched_at_utc": "2026-11-06T20:04:46+00:00",
+  "overpass_data_timestamp": "2026-11-06T20:02:48Z",
+  "sha256": "cf8bb354b51f621a2176b59e94ca4140612fc6ecf129235a9bdcf0f90b5420bf",
+  "bytes": 1483359,
+  "counts": {
+    "node": 6675,
+    "way": 2497,
+    "relation": 0
+  },
+  "contributor_fields_removed": [
+    "user",
+    "uid",
+    "changeset"
+  ],
+  "license": "Map data (c) OpenStreetMap contributors, ODbL 1.0; https://www.openstreetmap.org/copyright"
+}

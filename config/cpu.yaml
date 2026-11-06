@@ -13,12 +13,14 @@ data:
   cache_dir: data/cache
   association: slam_poses        # frame -> edge via SLAM keyframe poses
 graph: {max_edges: null}
-ground_truth:
-  stairs_min_area_m2: 20
 labels:
   source: gnd_map                # GND traversability map, split by location
   split: by_location
-  classes: [flat, step_curb, stairs]   # = risk tiers T0/T1/T2
+  classes: [traversable, hazard]     # hazard = GND stairs-or-curb; both mean reroute
+tiers:                           # set from OSM context before arrival, not by the classifier
+  t1: roadway_or_crossing
+  t2_buffer_m: 5.0              # d: within d m of OSM-mapped steps or kerbs; placeholder
+  escalate_hazard_belief: 0.3    # beta: fused hazard belief >= beta escalates to T2; placeholder
 features:                        # layer 1: frozen, cached, not trained
   views: [camera, lidar, map]
   camera: {backbone: dinov2_vits14, embeddings: cached}
@@ -31,12 +33,14 @@ fusion:                          # layer 2
   modality_drop_prob: 0.2
   kl_anneal_epochs: 10
   temporal: accumulate_approach  # proposed: accumulate evidence over frames
+  map_discount: {r_max: 0.95, tau_age_y: 10.0}  # proposed: r = r_max*exp(-age/tau); placeholders
   calibration: temperature
   lr: 0.001
   epochs: 50
   batch_size: 128
 checkers:
-  c1_step: {h_lim_m: 0.05, n_min: 200}
+  c1_step: {h_lim_m: 0.05, n_min: 200,
+            t2_min_frames: 2, t2_min_range_gap_m: 1.0}  # T2: pass on >= 2 frames at different ranges; gap is a placeholder
   c2_conflict: {kappa: 0.5}      # placeholder; set on the calibration split
 gate:
   threshold_method: conformal

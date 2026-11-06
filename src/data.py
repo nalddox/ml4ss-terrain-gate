@@ -4,10 +4,12 @@ Layout, same as ECE 532 A2 plus a mask and per-row context:
   <cache_dir>/features.npz
       {split}_x{m}      float32 [N, d_m]   frozen features of view m (camera, lidar, map)
       {split}_mask      bool    [N, M]     view available (camera dropped, LiDAR too sparse, ...)
-      {split}_y         int64   [N]        class index (0 flat, 1 step/curb, 2 stairs)
+      {split}_y         int64   [N]        class index (0 traversable, 1 hazard = GND stairs-or-curb)
       {split}_edge      int64   [N]        edge id
       {split}_range_m   float32 [N]        distance from robot to edge when the frame was taken
       {split}_location  int64   [N]        location id used for the by-location split
+      {split}_map_age_y float32 [N]        age of the edge's map label in years (drives the map discount)
+      {split}_osm_tier  int64   [N]        risk tier from OSM context before arrival (0 T0, 1 T1, 2 T2)
   <cache_dir>/metadata.json
       {"views": [...], "input_dims": [...], "classes": [...], "splits": [...]}
 
@@ -20,7 +22,7 @@ import numpy as np
 import torch
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTEXT_KEYS = ('edge', 'range_m', 'location')
+CONTEXT_KEYS = ('edge', 'range_m', 'location', 'map_age_y', 'osm_tier')
 
 
 def load_metadata(cache_dir):

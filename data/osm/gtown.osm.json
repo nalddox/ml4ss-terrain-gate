@@ -1,0 +1,27 @@
+{
+  "region": "gtown",
+  "bbox_swne": [
+    38.903,
+    -77.08,
+    38.912,
+    -77.067
+  ],
+  "as_of": null,
+  "endpoint": "https://overpass-api.de/api/interpreter",
+  "query": "[out:xml][timeout:120];\n(\n  way[\"highway\"](38.903000,-77.080000,38.912000,-77.067000);\n  node[\"kerb\"](38.903000,-77.080000,38.912000,-77.067000);\n  node[\"barrier\"=\"kerb\"](38.903000,-77.080000,38.912000,-77.067000);\n  node[\"highway\"~\"^(crossing|steps)$\"](38.903000,-77.080000,38.912000,-77.067000);\n);\n(._; >;);\nout meta;\n",
+  "fetched_at_utc": "2026-11-06T20:05:20+00:00",
+  "overpass_data_timestamp": "2026-11-06T20:03:48Z",
+  "sha256": "d596527dc76c87040936745c92c40f410f785595409ccc1d8ad9a6262cb6b1f5",
+  "bytes": 896729,
+  "counts": {
+    "node": 4167,
+    "way": 1242,
+    "relation": 0
+  },
+  "contributor_fields_removed": [
+    "user",
+    "uid",
+    "changeset"
+  ],
+  "license": "Map data (c) OpenStreetMap contributors, ODbL 1.0; https://www.openstreetmap.org/copyright"
+}

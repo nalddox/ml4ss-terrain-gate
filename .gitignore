@@ -1,5 +1,7 @@
-# Data: raw GND bags and caches are far too large to commit
-data/
+# Data: raw GND bags and caches are far too large to commit. The small OSM extracts are
+# committed (ODbL; see data/osm/README.md).
+data/*
+!data/osm/
 *.bag
 *.db3
 *.mcap

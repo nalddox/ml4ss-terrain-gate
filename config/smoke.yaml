@@ -9,12 +9,14 @@ data:
   cache_dir: data/cache
   association: slam_poses
 graph: {max_edges: 20}
-ground_truth:
-  stairs_min_area_m2: 20
 labels:
   source: gnd_map
   split: by_location
-  classes: [flat, step_curb, stairs]
+  classes: [traversable, hazard]
+tiers:
+  t1: roadway_or_crossing
+  t2_buffer_m: 5.0
+  escalate_hazard_belief: 0.3
 features:
   views: [camera, lidar, map]
   camera: {backbone: dinov2_vits14, embeddings: cached}
@@ -26,15 +28,17 @@ fusion:
   modality_drop_prob: 0.2
   kl_anneal_epochs: 2
   temporal: none
+  map_discount: {r_max: 0.95, tau_age_y: 10.0}
   calibration: temperature
   lr: 0.001
   epochs: 5
   batch_size: 64
 checkers:
-  c1_step: {h_lim_m: 0.05, n_min: 200}
+  c1_step: {h_lim_m: 0.05, n_min: 200,
+            t2_min_frames: 2, t2_min_range_gap_m: 1.0}
   c2_conflict: {kappa: 0.5}
 gate: {threshold_method: fixed,
-       tau_act: 0.85}
+       tau_act: 0.85, tau_u: 0.2}
 policies: [b2_veto, b3_tmc]
 injections: [map_flip]
 seeds: [0]
